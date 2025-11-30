@@ -92,6 +92,57 @@ pdf() {
 }
 
 ##############################
+# High-level PDF helpers
+##############################
+
+best_latest_pdf() {
+    echo "Downloading BEST result (left side)..."
+    mkdir -p data
+    # download.py 'best' prints: <hashID> <runID> on stdout
+    read calibration_left RUNID_LEFT < <("$PYTHON" download.py best)
+    echo "  calibration_left=$calibration_left"
+    echo "  RUNID_LEFT=$RUNID_LEFT"
+
+    echo "Downloading LATEST result (right side)..."
+    # download.py 'latest' prints: <hashID> <runID> on stdout
+    read calibration_right RUNID_RIGHT < <("$PYTHON" download.py latest)
+    echo "  calibration_right=$calibration_right"
+    echo "  RUNID_RIGHT=$RUNID_RIGHT"
+
+    # Now build and compile the report using these values
+    pdf
+}
+
+specific_pdf() {
+    if [ "$#" -ne 5 ]; then
+        echo "Usage: $0 specific-pdf CALIB_LEFT RUN_LEFT CALIB_RIGHT RUN_RIGHT" >&2
+        exit 1
+    fi
+
+    # Positional arguments:
+    #   $2 = CALIB_LEFT
+    #   $3 = RUN_LEFT
+    #   $4 = CALIB_RIGHT
+    #   $5 = RUN_RIGHT
+    calibration_left="$2"
+    RUNID_LEFT="$3"
+    calibration_right="$4"
+    RUNID_RIGHT="$5"
+
+    mkdir -p data
+
+    echo "Downloading specific LEFT result: hashID=$calibration_left runID=$RUNID_LEFT"
+    "$PYTHON" download.py specific "$calibration_left" "$RUNID_LEFT" >/dev/null
+
+    echo "Downloading specific RIGHT result: hashID=$calibration_right runID=$RUNID_RIGHT"
+    "$PYTHON" download.py specific "$calibration_right" "$RUNID_RIGHT" >/dev/null
+
+    # Now build and compile the report using these explicit values
+    pdf
+}
+
+
+##############################
 # Batch functions
 ##############################
 
@@ -122,11 +173,13 @@ case "$1" in
     build)               build ;;
     pdf-only)            pdf_only ;;
     pdf)                 pdf ;;
+    best-latest-pdf)     best_latest_pdf "$@" ;;
+    specific-pdf)        specific_pdf "$@" ;;
     batch-runscripts-numpy) batch_runscripts_numpy ;;
     batch-runscripts-sinq20) batch_runscripts_sinq20 ;;
     all)                 all ;;
     *)
-        echo "Usage: $0 {download-latest-two|download-data|clean|build|pdf-only|pdf|batch-runscripts-numpy|batch-runscripts-sinq20|all}"
+        echo "Usage: $0 {download-latest-two|download-data|clean|build|pdf-only|pdf|best-latest-pdf|specific-pdf|batch-runscripts-numpy|batch-runscripts-sinq20|all}"
         exit 1
         ;;
 esac
